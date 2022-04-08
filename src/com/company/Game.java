@@ -1,45 +1,59 @@
 package src.com.company;
 
-import java.io.PrintWriter;
+import java.util.Stack;
 
 public class Game {
-    private final Player player;
-    private final PcOpponent pcOpponent;
-    private final PrintWriter printWriter;
-    boolean isGameProcessing;
+    private static volatile Stack<Game> games = new Stack<>();
+    private Player firstPlayer;
+    private Player secondPlayer;
+    private boolean isReady = false;
 
-    public Game(PrintWriter printWriter, Player player, boolean flag) {
-        this.printWriter = printWriter;
-        this.isGameProcessing = flag;
-        this.player = player;
-        this.pcOpponent = new PcOpponent();
+    public boolean isReady() {
+        return isReady;
     }
 
-    public void startGame() {
-        printWriter.println("ROCK, PAPER, SCISSORS");
-        Move playerMove = player.processMove();
-        Move opponentMove = pcOpponent.processMove();
-        printWriter.println("Your move: " + playerMove);
-        printWriter.println("Opponent move: " + opponentMove);
+    public static Game getGame() {
+        if (games.empty()) {
+            games.push(new Game());
+        }
+        return games.peek();
+    }
 
-        switch (playerMove.compareMoves(opponentMove)) {
-            case 0 -> {
-                printWriter.println("Draw, new round");
-                printWriter.println("");
-                printWriter.println("================================================================");
-                printWriter.println("");
-                startGame();
-            }
-            case 1 -> {
-                printWriter.println(player.getName() + " WINS!");
-                isGameProcessing = false;
-            }
-            case -1 -> {
-                printWriter.println("Opponent victory!");
-                isGameProcessing = false;
-            }
+    public void acceptPlayer(Player player) {
+        if (firstPlayer == null) {
+            firstPlayer = player;
+        } else if (secondPlayer == null) {
+            secondPlayer = player;
+            isReady = true;
         }
     }
 
+    public void startGame() {
+        translateCommonMessage("ROCK, PAPER, SCISSORS");
+        Move firstPlayerMove = firstPlayer.processMove();
+        translateCommonMessage(firstPlayer.getName() + " has processed move");
+        Move secondPlayerMove = secondPlayer.processMove();
+        translateCommonMessage(secondPlayer.getName() + " has processed move");
+        translateCommonMessage(firstPlayer.getName() + " move: " + firstPlayerMove);
+        translateCommonMessage(secondPlayer.getName() + " move: " + secondPlayerMove);
 
+        switch (firstPlayerMove.compareMoves(secondPlayerMove)) {
+            case 0 -> {
+                translateCommonMessage("Draw, new round");
+                translateCommonMessage("");
+                translateCommonMessage("================================================================");
+                translateCommonMessage("");
+                startGame();
+            }
+            case 1 -> translateCommonMessage(firstPlayer.getName() + " victory");
+
+            case -1 -> translateCommonMessage(secondPlayer.getName() + " victory!");
+        }
+        games.pop();
+    }
+
+    private void translateCommonMessage(String message) {
+        firstPlayer.getPrintWriter().println(message);
+        secondPlayer.getPrintWriter().println(message);
+    }
 }

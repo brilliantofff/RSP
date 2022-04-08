@@ -1,30 +1,48 @@
 package src.com.company;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.Socket;
 import java.util.Scanner;
+import java.util.Stack;
 
-public class Player {
+public class Player implements Runnable {
+    public static volatile Stack<Player> players = new Stack<>();
+    private Scanner scanner;
+    private PrintWriter printWriter;
+
+    public PrintWriter getPrintWriter() {
+        return printWriter;
+    }
+
     public String getName() {
         return name;
     }
 
-    private final String name;
-    private final Scanner scanner;
-    private final PrintWriter printWriter;
+    private String name;
 
-    public Player(String name,Scanner scanner, PrintWriter printWriter) {
-        this.name = name;
-        this.scanner = scanner;
-        this.printWriter = printWriter;
+    public Player(Socket socket) {
+        try {
+            this.printWriter = new PrintWriter(socket.getOutputStream(), true);
+            this.scanner = new Scanner(socket.getInputStream());
+            printWriter.println("Enter player name");
+            this.name = scanner.nextLine();
+            players.push(this);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public static Player registerPlayer(Scanner in, PrintWriter out) {
-        String name = "";
-        while (name.isBlank() || name.length() > 8) {
-            out.println("Enter player name");
-            name = in.nextLine();
+    @Override
+    public void run() {
+        Game currentGame = Game.getGame();
+        currentGame.acceptPlayer(this);
+        boolean isReady = false;
+        printWriter.println("Searching for your opponent");
+        while (!isReady) {
+            isReady = currentGame.isReady();
         }
-        return new Player(name, in, out);
+        currentGame.startGame();
     }
 
     public Move processMove() {
@@ -46,10 +64,4 @@ public class Player {
         printWriter.println("INVALID MOVE");
         return processMove();
     }
-
-    public boolean playAgain() {
-        printWriter.print("Play again?\n Y for YES \n any other key for NO");
-        return scanner.nextLine().toUpperCase().charAt(0) == 'Y';
-    }
 }
-
